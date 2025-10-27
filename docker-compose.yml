@@ -1,0 +1,59 @@
+# Versi Docker Compose yang digunakan (yang terkini)
+version: '3.8'
+
+# Mendefinisikan semua kotak (kontainer) Anda
+services:
+  
+  # 1. Kontainer Database MySQL
+  db:
+    image: mysql:8.0
+    container_name: mysql_db
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: 'book_db'  # Nama database Anda
+      MYSQL_ROOT_PASSWORD: 'your_strong_password' # Ganti dengan password aman
+    ports:
+      # Hubungkan port 3306 di dalam kontainer ke 3307 di komputer Anda
+      # (Gunakan 3307 agar tidak bentrok dengan XAMPP)
+      - "3307:3306"
+    volumes:
+      # Simpan data MySQL secara permanen di folder 'mysql-data'
+      - ./mysql-data:/var/lib/mysql
+
+  # 2. Kontainer phpMyAdmin
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin
+    container_name: pma
+    restart: unless-stopped
+    ports:
+      # Kita buka phpMyAdmin versi Docker di http://localhost:8081
+      - "8081:80"
+    environment:
+      PMA_HOST: db # KUNCI: Menghubungkan phpMyAdmin ke kontainer db
+    depends_on:
+      - db # Pastikan db berjalan terlebih dahulu
+
+  # 3. Kontainer Backend Node.js
+  backend:
+    build: ./server # Bangun dari Dockerfile di folder 'server'
+    container_name: backend_api
+    restart: unless-stopped
+    ports:
+      - "8082:8082"
+    environment:
+      DB_HOST: 'db' # KUNCI: Backend terhubung ke db bukan localhost
+      DB_USER: 'root'
+      DB_PASSWORD: 'your_strong_password' # Samakan dengan password di atas
+      DB_NAME: 'book_db'
+    depends_on:
+      - db
+
+  # 4. Kontainer Frontend React
+  frontend:
+    build: ./client # Bangun dari Dockerfile di folder client
+    container_name: react_ui
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
